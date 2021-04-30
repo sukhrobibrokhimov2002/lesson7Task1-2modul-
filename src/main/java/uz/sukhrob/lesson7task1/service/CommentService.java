@@ -48,27 +48,33 @@ public class CommentService {
     public ApiResponse deleteMyComment(Long id) {
         try {
             User user = (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-            List<Comment> byCreatedById = commentRepository.findByCreatedById(user.getId());
-            for (Comment comment : byCreatedById) {
-                if (comment.getId() == id) {
-                    commentRepository.deleteById(id);
-                    return new ApiResponse("Successfully deleted", true);
-                }
+            Optional<Comment> optionalComment = commentRepository.findById(id);
+            if (!optionalComment.isPresent()) return new ApiResponse("Comment not found", false);
+            Comment comment = optionalComment.get();
+            if (comment.getCreatedBy().getId() == user.getId()) {
+                commentRepository.deleteById(id);
+                return new ApiResponse("Successfully deleted", true);
             }
-            return new ApiResponse("Comment not found", false);
+            return new ApiResponse("Error in deleting", false);
+
         } catch (Exception e) {
             return new ApiResponse("Error in deleting", false);
         }
     }
 
     public ApiResponse editComment(Long id, EditCommentDto commentDto) {
+        User user = (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+
         Optional<Comment> optionalComment = commentRepository.findById(id);
         if (!optionalComment.isPresent()) return new ApiResponse("Comment not found", false);
         Comment comment = optionalComment.get();
+        if (comment.getCreatedBy().getId() == user.getId()) {
+            comment.setText(commentDto.getText());
+            commentRepository.save(comment);
+            return new ApiResponse("Successfully edited", true);
 
-        comment.setText(commentDto.getText());
-        commentRepository.save(comment);
-        return new ApiResponse("Successfully edited", true);
+        }
+        return new ApiResponse("Error in editing", false);
     }
 
     public List<Comment> getComments() {
